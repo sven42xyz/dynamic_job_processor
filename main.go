@@ -44,10 +44,10 @@ const (
 )
 
 var (
-	pendingJobs   []PendingJob
-	jobsMutex     sync.Mutex
-	logger        *zap.Logger
-	config        *viper.Viper
+	pendingJobs     []PendingJob
+	jobsMutex       sync.Mutex
+	logger          *zap.Logger
+	config          *viper.Viper
 	targetSystemURL string
 )
 
@@ -140,12 +140,12 @@ func initLogger() {
 		OutputPaths:      []string{"stdout"},
 		ErrorOutputPaths: []string{"stderr"},
 		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey:  "msg",
-			LevelKey:    "level",
-			TimeKey:     "time",
-			CallerKey:   "caller",
-			EncodeLevel: zapcore.LowercaseLevelEncoder,
-			EncodeTime:  zapcore.ISO8601TimeEncoder,
+			MessageKey:   "msg",
+			LevelKey:     "level",
+			TimeKey:      "time",
+			CallerKey:    "caller",
+			EncodeLevel:  zapcore.LowercaseLevelEncoder,
+			EncodeTime:   zapcore.ISO8601TimeEncoder,
 			EncodeCaller: zapcore.ShortCallerEncoder,
 		},
 	}
