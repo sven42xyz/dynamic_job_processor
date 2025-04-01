@@ -1,0 +1,5 @@
+#JSON datafiles to be excluded
+*.json
+
+#Config files to be excluded
+*.env

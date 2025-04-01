@@ -1,0 +1,3 @@
+port: 8080
+target_system_url: "http://your-target-system.com/api" # Ersetzen Sie dies durch die tatsächliche URL Ihres Zielsystems
+debug: true # Setzen Sie dies auf false für Produktionsumgebungen
