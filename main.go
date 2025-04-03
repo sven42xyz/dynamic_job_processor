@@ -13,10 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"djp.chapter42.de/a/data"
+	"djp.chapter42.de/a/handlers"
+	"djp.chapter42.de/a/config"
+	"djp.chapter42.de/a/logger"
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 // Job definiert die Struktur eines zu verarbeitenden Jobs.
@@ -25,16 +27,7 @@ type Job struct {
 	Data map[string]interface{} `json:"data"`
 }
 
-// PendingJob enthält den Job und zusätzliche Informationen für die Verarbeitung.
-type PendingJob struct {
-	Job       Job
-	CreatedAt time.Time
-	Attempts  int
-}
-
 const (
-	defaultPort             = "8080"
-	defaultCheckInterval    = 5 * time.Second
 	maxCheckInterval        = 60 * time.Second
 	minCheckInterval        = 1 * time.Second
 	persistenceFileName     = "pending_jobs.json"
@@ -44,24 +37,24 @@ const (
 )
 
 var (
-	pendingJobs     []PendingJob
-	jobsMutex       sync.Mutex
-	logger          *zap.Logger
-	config          *viper.Viper
+	pending_jobs    []data.PendingJob
+	jobs_mutex      sync.Mutex
 	targetSystemURL string
 )
 
 func main() {
 	// Konfiguration laden
-	initConfig()
+	config.InitConfig(logger.Log)
+
+	debug_mode := config.Config.GetBool("debug")
 
 	// Logger initialisieren
-	initLogger()
-	defer logger.Sync()
+	logger.InitLogger(debug_mode)
+	defer logger.Log.Sync()
 
-	targetSystemURL = config.GetString("target_system_url")
+	targetSystemURL = config.Config.GetString("target_system_url")
 	if targetSystemURL == "" {
-		logger.Fatal("target_system_url ist nicht in der Konfiguration definiert")
+		logger.Log.Fatal("target_system_url ist nicht in der Konfiguration definiert")
 		return
 	}
 
@@ -73,12 +66,12 @@ func main() {
 
 	// Gin-Router initialisieren
 	router := gin.Default()
-	router.POST("/jobs", handleNewJob)
+	router.POST("/jobs", handlers.NewJobHandler(logger.Log, &jobs_mutex, &pending_jobs))
 
 	// Server starten
-	port := config.GetString("port")
+	port := config.Config.GetString("port")
 	if port == "" {
-		port = defaultPort
+		port = config.DefaultPort
 	}
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", port),
@@ -90,87 +83,22 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-quit
-		logger.Info("Server wird heruntergefahren...")
+		logger.Log.Info("Server wird heruntergefahren...")
 		// Offene Jobs sichern
 		savePendingJobs()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := srv.Shutdown(ctx); err != nil {
-			logger.Fatal("Server-Shutdown fehlgeschlagen:", zap.Error(err))
+			logger.Log.Fatal("Server-Shutdown fehlgeschlagen:", zap.Error(err))
 		}
-		logger.Info("Server heruntergefahren.")
+		logger.Log.Info("Server heruntergefahren.")
 	}()
 
 	// Server starten (blockierend)
-	logger.Info("Server startet...", zap.String("port", port))
+	logger.Log.Info("Server startet...", zap.String("port", port))
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-		logger.Fatal("Fehler beim Starten des Servers:", zap.Error(err))
+		logger.Log.Fatal("Fehler beim Starten des Servers:", zap.Error(err))
 	}
-}
-
-func initConfig() {
-	config = viper.New()
-	config.SetDefault("port", defaultPort)
-	config.SetDefault("check_interval", defaultCheckInterval)
-	config.SetDefault("target_system_url", "")
-	config.SetConfigName("config")
-	config.SetConfigType("yaml")
-	config.AddConfigPath(".")
-	err := config.ReadInConfig()
-	if err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			logger.Warn("Konfigurationsdatei nicht gefunden, verwende Standardwerte")
-		} else {
-			logger.Error("Fehler beim Lesen der Konfigurationsdatei:", zap.Error(err))
-		}
-	}
-}
-
-func initLogger() {
-	level := zap.NewAtomicLevel()
-	if config.GetBool("debug") {
-		level.SetLevel(zap.DebugLevel)
-	} else {
-		level.SetLevel(zap.InfoLevel)
-	}
-
-	cfg := zap.Config{
-		Level:            level,
-		Encoding:         "json",
-		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
-		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey:   "msg",
-			LevelKey:     "level",
-			TimeKey:      "time",
-			CallerKey:    "caller",
-			EncodeLevel:  zapcore.LowercaseLevelEncoder,
-			EncodeTime:   zapcore.ISO8601TimeEncoder,
-			EncodeCaller: zapcore.ShortCallerEncoder,
-		},
-	}
-
-	var err error
-	logger, err = cfg.Build()
-	if err != nil {
-		panic(fmt.Sprintf("Fehler beim Initialisieren des Loggers: %v", err))
-	}
-}
-
-func handleNewJob(c *gin.Context) {
-	var job Job
-	if err := c.BindJSON(&job); err != nil {
-		logger.Warn("Fehler beim Parsen des JSON-Jobs:", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültiges JSON-Format"})
-		return
-	}
-
-	jobsMutex.Lock()
-	pendingJobs = append(pendingJobs, PendingJob{Job: job, CreatedAt: time.Now()})
-	jobsMutex.Unlock()
-
-	logger.Info("Neuer Job empfangen:", zap.String("uid", job.UID))
-	c.JSON(http.StatusAccepted, gin.H{"message": "Job akzeptiert", "uid": job.UID})
 }
 
 func processJobs() {
@@ -179,20 +107,20 @@ func processJobs() {
 	for {
 		time.Sleep(pollingInterval)
 
-		jobsMutex.Lock()
-		if len(pendingJobs) == 0 {
-			jobsMutex.Unlock()
+		jobs_mutex.Lock()
+		if len(pending_jobs) == 0 {
+			jobs_mutex.Unlock()
 			pollingInterval = successfulWriteInterval // Langsameres Polling, wenn keine Jobs anstehen
 			continue
 		}
 
-		var nextPendingJobs []PendingJob
+		var nextPendingJobs []data.PendingJob
 		var calculatedPollingInterval time.Duration
 
-		for _, pJob := range pendingJobs {
+		for _, pJob := range pending_jobs {
 			writable, err := checkWritable(pJob.Job.UID)
 			if err != nil {
-				logger.Error("Fehler beim Überprüfen des Schreibzugriffs:", zap.String("uid", pJob.Job.UID), zap.Error(err))
+				logger.Log.Error("Fehler beim Überprüfen des Schreibzugriffs:", zap.String("uid", pJob.Job.UID), zap.Error(err))
 				pJob.Attempts++
 				nextPendingJobs = append(nextPendingJobs, pJob)
 				calculatedPollingInterval = time.Duration(float64(pollingInterval) * failedCheckMultiplier)
@@ -203,13 +131,13 @@ func processJobs() {
 			if writable {
 				err := writeData(pJob.Job.UID, pJob.Job.Data)
 				if err != nil {
-					logger.Error("Fehler beim Schreiben der Daten:", zap.String("uid", pJob.Job.UID), zap.Error(err))
+					logger.Log.Error("Fehler beim Schreiben der Daten:", zap.String("uid", pJob.Job.UID), zap.Error(err))
 					pJob.Attempts++
 					nextPendingJobs = append(nextPendingJobs, pJob)
 					calculatedPollingInterval = time.Duration(float64(pollingInterval) * failedCheckMultiplier)
 					pollingInterval = min(calculatedPollingInterval, maxCheckInterval) // Dynamische Anpassung der Abfragerate bei Fehler
 				} else {
-					logger.Info("Daten erfolgreich geschrieben:", zap.String("uid", pJob.Job.UID))
+					logger.Log.Info("Daten erfolgreich geschrieben:", zap.String("uid", pJob.Job.UID))
 					pollingInterval = successfulWriteInterval // Langsameres Polling nach erfolgreichem Schreiben
 				}
 			} else {
@@ -219,8 +147,8 @@ func processJobs() {
 				pollingInterval = min(calculatedPollingInterval, maxCheckInterval) // Dynamische Anpassung der Abfragerate, wenn Objekt blockiert ist
 			}
 		}
-		pendingJobs = nextPendingJobs
-		jobsMutex.Unlock()
+		pending_jobs = nextPendingJobs
+		jobs_mutex.Unlock()
 	}
 }
 
@@ -235,11 +163,11 @@ func checkWritable(uid string) (bool, error) {
 	if resp.StatusCode == http.StatusOK {
 		return true, nil
 	} else if resp.StatusCode == http.StatusNotFound {
-		logger.Warn("Zielobjekt nicht gefunden:", zap.String("uid", uid))
+		logger.Log.Warn("Zielobjekt nicht gefunden:", zap.String("uid", uid))
 		return false, nil // Objekt existiert nicht oder ist nicht auffindbar, nicht als Blockade interpretieren
 	} else {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		logger.Debug("Schreibstatus-API Antwort:", zap.String("status", resp.Status), zap.String("body", string(bodyBytes)))
+		logger.Log.Debug("Schreibstatus-API Antwort:", zap.String("status", resp.Status), zap.String("body", string(bodyBytes)))
 		return false, nil // Andere Statuscodes deuten auf Blockade oder Fehler hin
 	}
 }
@@ -272,20 +200,20 @@ func writeData(uid string, data map[string]interface{}) error {
 }
 
 func savePendingJobs() {
-	jobsMutex.Lock()
-	defer jobsMutex.Unlock()
+	jobs_mutex.Lock()
+	defer jobs_mutex.Unlock()
 
-	data, err := json.MarshalIndent(pendingJobs, "", "  ")
+	data, err := json.MarshalIndent(pending_jobs, "", "  ")
 	if err != nil {
-		logger.Error("Fehler beim Serialisieren der ausstehenden Jobs:", zap.Error(err))
+		logger.Log.Error("Fehler beim Serialisieren der ausstehenden Jobs:", zap.Error(err))
 		return
 	}
 
 	err = os.WriteFile(persistenceFileName, data, 0644)
 	if err != nil {
-		logger.Error("Fehler beim Speichern der ausstehenden Jobs in die Datei:", zap.String("filename", persistenceFileName), zap.Error(err))
+		logger.Log.Error("Fehler beim Speichern der ausstehenden Jobs in die Datei:", zap.String("filename", persistenceFileName), zap.Error(err))
 	} else {
-		logger.Info("Ausstehende Jobs in Datei gespeichert:", zap.String("filename", persistenceFileName), zap.Int("count", len(pendingJobs)))
+		logger.Log.Info("Ausstehende Jobs in Datei gespeichert:", zap.String("filename", persistenceFileName), zap.Int("count", len(pending_jobs)))
 	}
 }
 
@@ -293,18 +221,18 @@ func restorePendingJobs() {
 	data, err := os.ReadFile(persistenceFileName)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			logger.Error("Fehler beim Lesen der ausstehenden Jobs aus der Datei:", zap.String("filename", persistenceFileName), zap.Error(err))
+			logger.Log.Error("Fehler beim Lesen der ausstehenden Jobs aus der Datei:", zap.String("filename", persistenceFileName), zap.Error(err))
 		}
 		return
 	}
 
-	err = json.Unmarshal(data, &pendingJobs)
+	err = json.Unmarshal(data, &pending_jobs)
 	if err != nil {
-		logger.Error("Fehler beim Deserialisieren der ausstehenden Jobs:", zap.String("filename", persistenceFileName), zap.Error(err))
+		logger.Log.Error("Fehler beim Deserialisieren der ausstehenden Jobs:", zap.String("filename", persistenceFileName), zap.Error(err))
 		return
 	}
 
-	logger.Info("Ausstehende Jobs aus Datei wiederhergestellt:", zap.String("filename", persistenceFileName), zap.Int("count", len(pendingJobs)))
+	logger.Log.Info("Ausstehende Jobs aus Datei wiederhergestellt:", zap.String("filename", persistenceFileName), zap.Int("count", len(pending_jobs)))
 }
 
 func min(a, b time.Duration) time.Duration {
