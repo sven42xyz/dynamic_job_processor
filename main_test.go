@@ -13,8 +13,10 @@ import (
 
 	"djp.chapter42.de/a/config"
 	"djp.chapter42.de/a/data"
+	"djp.chapter42.de/a/external"
 	"djp.chapter42.de/a/handlers"
 	"djp.chapter42.de/a/logger"
+	"djp.chapter42.de/a/persistence"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -102,7 +104,7 @@ func TestCheckWritable(t *testing.T) {
 	config.Config = viper.New()
 	config.Config.Set("target_system_url", tsOK.URL)
 
-	writable, err := checkWritable("test-uid")
+	writable, err := external.WriteCheck("test-uid")
 	assert.NoError(t, err)
 	assert.True(t, writable)
 
@@ -113,7 +115,7 @@ func TestCheckWritable(t *testing.T) {
 	defer tsNotOK.Close()
 	config.Config.Set("target_system_url", tsNotOK.URL)
 
-	writable, err = checkWritable("test-uid")
+	writable, err = external.WriteCheck("test-uid")
 	assert.NoError(t, err)
 	assert.False(t, writable)
 
@@ -124,13 +126,13 @@ func TestCheckWritable(t *testing.T) {
 	defer tsNotFound.Close()
 	config.Config.Set("target_system_url", tsNotFound.URL)
 
-	writable, err = checkWritable("test-uid")
+	writable, err = external.WriteCheck("test-uid")
 	assert.NoError(t, err)
 	assert.False(t, writable)
 
 	// Testfall: Fehler beim Aufruf der API
 	config.Config.Set("target_system_url", "invalid-url")
-	writable, err = checkWritable("test-uid")
+	writable, err = external.WriteCheck("test-uid")
 	assert.Error(t, err)
 	assert.False(t, writable)
 }
@@ -145,7 +147,7 @@ func TestWriteData(t *testing.T) {
 	config.Config = viper.New()
 	config.Config.Set("target_system_url", tsSuccess.URL)
 
-	err := writeData("test-uid", map[string]interface{}{"key": "value"})
+	err := external.WriteData("test-uid", map[string]interface{}{"key": "value"})
 	assert.NoError(t, err)
 
 	// Testfall: Fehler beim Schreiben (Status nicht 2xx)
@@ -156,7 +158,7 @@ func TestWriteData(t *testing.T) {
 	defer tsError.Close()
 	config.Config.Set("target_system_url", tsError.URL)
 
-	err = writeData("test-uid", map[string]interface{}{"key": "value"})
+	err = external.WriteData("test-uid", map[string]interface{}{"key": "value"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Status: 500 Internal Server Error")
 	assert.Contains(t, err.Error(), "Body: Write error")
@@ -166,20 +168,20 @@ func TestWriteData(t *testing.T) {
 	invalidData := map[string]interface{}{
 		"a": func() {}, // Funktion kann nicht in JSON serialisiert werden
 	}
-	err = writeData("test-uid", invalidData)
+	err = external.WriteData("test-uid", invalidData)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "fehler beim Serialisieren der Daten zu JSON")
 
 	// Testfall: Fehler beim Erstellen der Anfrage
 	config.Config.Set("target_system_url", "%invalid-url") // Ungültige URL
-	err = writeData("test-uid", map[string]interface{}{"key": "value"})
+	err = external.WriteData("test-uid", map[string]interface{}{"key": "value"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "fehler beim Erstellen der PUT-Anfrage")
 }
 
 func TestSaveAndRestorePendingJobs(t *testing.T) {
 	// Aufräumen: Stellen Sie sicher, dass die Datei nicht existiert
-	os.Remove(persistenceFileName)
+	os.Remove(persistence.PersistenceFileName)
 
 	// Vorbereiten einiger Test-Jobs
 	testJobs := []data.PendingJob{
@@ -189,13 +191,13 @@ func TestSaveAndRestorePendingJobs(t *testing.T) {
 
 	// Speichern der Jobs
 	pending_jobs = testJobs
-	savePendingJobs()
+	persistence.SavePendingJobs(&jobs_mutex, &pending_jobs)
 
 	// Leeren der pendingJobs im Speicher
 	pending_jobs = []data.PendingJob{}
 
 	// Wiederherstellen der Jobs
-	restorePendingJobs()
+	persistence.RestorePendingJobs(&pending_jobs)
 
 	// Überprüfen, ob die wiederhergestellten Jobs mit den ursprünglichen übereinstimmen
 	assert.Len(t, pending_jobs, 2)
@@ -205,11 +207,11 @@ func TestSaveAndRestorePendingJobs(t *testing.T) {
 	assert.Equal(t, 2.0, pending_jobs[1].Job.Data["b"])
 
 	// Aufräumen
-	os.Remove(persistenceFileName)
+	os.Remove(persistence.PersistenceFileName)
 
 	// Testfall: Keine Datei vorhanden beim Wiederherstellen
 	pending_jobs = []data.PendingJob{}
-	restorePendingJobs()
+	persistence.RestorePendingJobs(&pending_jobs)
 	assert.Empty(t, pending_jobs)
 }
 

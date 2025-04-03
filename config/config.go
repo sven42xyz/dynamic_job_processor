@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	DefaultPort          = "8080"
-	DefaultCheckInterval = 5 * time.Second
+	DefaultPort          string        = "8080"
+	DefaultCheckInterval time.Duration = 5 * time.Second
 )
 
 var Config *viper.Viper
