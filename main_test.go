@@ -51,7 +51,7 @@ func setupRouter() *gin.Engine {
 
 func TestHandleNewJob(t *testing.T) {
 	router := setupRouter()
-	router.POST("/jobs", handlers.NewJobHandler(logger.Log, &jobs_mutex, &pending_jobs))
+	router.POST("/jobs", handlers.NewJobHandler(&jobs_mutex, &pending_jobs))
 
 	jobData := `{"uid": "test", "data": {"key": "value"}}`
 	req, _ := http.NewRequest("POST", "/jobs", bytes.NewBufferString(jobData))
@@ -197,7 +197,7 @@ func TestSaveAndRestorePendingJobs(t *testing.T) {
 	pending_jobs = []data.PendingJob{}
 
 	// Wiederherstellen der Jobs
-	persistence.RestorePendingJobs(&pending_jobs)
+	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs)
 
 	// Überprüfen, ob die wiederhergestellten Jobs mit den ursprünglichen übereinstimmen
 	assert.Len(t, pending_jobs, 2)
@@ -211,7 +211,7 @@ func TestSaveAndRestorePendingJobs(t *testing.T) {
 
 	// Testfall: Keine Datei vorhanden beim Wiederherstellen
 	pending_jobs = []data.PendingJob{}
-	persistence.RestorePendingJobs(&pending_jobs)
+	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs)
 	assert.Empty(t, pending_jobs)
 }
 

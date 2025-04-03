@@ -15,7 +15,6 @@ import (
 	"djp.chapter42.de/a/handlers"
 	"djp.chapter42.de/a/logger"
 	"djp.chapter42.de/a/persistence"
-	"djp.chapter42.de/a/processor"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -36,14 +35,11 @@ func main() {
 	defer logger.Log.Sync()
 
 	// Geladene Jobs wiederherstellen
-	persistence.RestorePendingJobs(&pending_jobs)
-
-	// Goroutine für die Jobverarbeitung starten
-	go processor.ProcessJobs(&jobs_mutex, &pending_jobs)
+	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs)
 
 	// Gin-Router initialisieren
 	router := gin.Default()
-	router.POST("/jobs", handlers.NewJobHandler(logger.Log, &jobs_mutex, &pending_jobs))
+	router.POST("/jobs", handlers.NewJobHandler(&jobs_mutex, &pending_jobs))
 
 	// Server starten
 	port := config.Config.GetString("port")
@@ -61,13 +57,17 @@ func main() {
 	go func() {
 		<-quit
 		logger.Log.Info("Server wird heruntergefahren...")
+
 		// Offene Jobs sichern
 		persistence.SavePendingJobs(&jobs_mutex, &pending_jobs)
+
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+
 		if err := srv.Shutdown(ctx); err != nil {
 			logger.Log.Fatal("Server-Shutdown fehlgeschlagen:", zap.Error(err))
 		}
+		
 		logger.Log.Info("Server heruntergefahren.")
 	}()
 

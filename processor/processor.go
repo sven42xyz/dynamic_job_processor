@@ -19,53 +19,43 @@ const (
 	FailedCheckMultiplier   float64       = 1.5
 )
 
-func ProcessJobs(jobs_mutex *sync.Mutex, pending_jobs *[]data.PendingJob, ) {
+func ProcessJob(job data.PendingJob, pending_jobs *[]data.PendingJob, job_mutex *sync.Mutex) {
 	pollingInterval := InitialPollingInterval
 
 	for {
 		time.Sleep(pollingInterval)
 
-		jobs_mutex.Lock()
-		if len(*pending_jobs) == 0 {
-			jobs_mutex.Unlock()
-			pollingInterval = SuccessfulWriteInterval // Langsameres Polling, wenn keine Jobs anstehen
+		writable, err := external.WriteCheck(job.Job.UID)
+		if err != nil {
+			logger.Log.Error("Fehler beim Überprüfen des Schreibzugriffs:", zap.String("uid", job.Job.UID), zap.Error(err))
+			job.Attempts++
+			pollingInterval = timebackoff.Min(time.Duration(float64(pollingInterval) * FailedCheckMultiplier), MaxCheckInterval) // Dynamische Anpassung der Abfragerate bei Fehler
 			continue
 		}
 
-		var nextPendingJobs []data.PendingJob
-		var calculatedPollingInterval time.Duration
-
-		for _, pJob := range *pending_jobs {
-			writable, err := external.WriteCheck(pJob.Job.UID)
+		if writable {
+			err := external.WriteData(job.Job.UID, job.Job.Data)
 			if err != nil {
-				logger.Log.Error("Fehler beim Überprüfen des Schreibzugriffs:", zap.String("uid", pJob.Job.UID), zap.Error(err))
-				pJob.Attempts++
-				nextPendingJobs = append(nextPendingJobs, pJob)
-				calculatedPollingInterval = time.Duration(float64(pollingInterval) * FailedCheckMultiplier)
-				pollingInterval = timebackoff.Min(calculatedPollingInterval, MaxCheckInterval) // Dynamische Anpassung der Abfragerate bei Fehler
-				continue
-			}
-
-			if writable {
-				err := external.WriteData(pJob.Job.UID, pJob.Job.Data)
-				if err != nil {
-					logger.Log.Error("Fehler beim Schreiben der Daten:", zap.String("uid", pJob.Job.UID), zap.Error(err))
-					pJob.Attempts++
-					nextPendingJobs = append(nextPendingJobs, pJob)
-					calculatedPollingInterval = time.Duration(float64(pollingInterval) * FailedCheckMultiplier)
-					pollingInterval = timebackoff.Min(calculatedPollingInterval, MaxCheckInterval) // Dynamische Anpassung der Abfragerate bei Fehler
-				} else {
-					logger.Log.Info("Daten erfolgreich geschrieben:", zap.String("uid", pJob.Job.UID))
-					pollingInterval = SuccessfulWriteInterval // Langsameres Polling nach erfolgreichem Schreiben
-				}
+				logger.Log.Error("Fehler beim Schreiben der Daten:", zap.String("uid", job.Job.UID), zap.Error(err))
+				job.Attempts++
+				pollingInterval = timebackoff.Min(time.Duration(float64(pollingInterval) * FailedCheckMultiplier), MaxCheckInterval) // Dynamische Anpassung der Abfragerate bei Fehler
 			} else {
-				pJob.Attempts++
-				nextPendingJobs = append(nextPendingJobs, pJob)
-				calculatedPollingInterval = time.Duration(float64(pollingInterval) * FailedCheckMultiplier)
-				pollingInterval = timebackoff.Min(calculatedPollingInterval, MaxCheckInterval) // Dynamische Anpassung der Abfragerate, wenn Objekt blockiert ist
+				logger.Log.Info("Daten erfolgreich geschrieben:", zap.String("uid", job.Job.UID))
+
+				job_mutex.Lock()
+                for i, j := range *pending_jobs {
+                    if j.Job.UID == job.Job.UID {
+                        *pending_jobs = append((*pending_jobs)[:i], (*pending_jobs)[i+1:]...) // Job entfernen
+                        break
+                    }
+                }
+                job_mutex.Unlock()
+
+				return
 			}
+		} else {
+			job.Attempts++
+			pollingInterval = timebackoff.Min(time.Duration(float64(pollingInterval) * FailedCheckMultiplier), MaxCheckInterval) // Dynamische Anpassung der Abfragerate, wenn Objekt blockiert ist
 		}
-		*pending_jobs = nextPendingJobs
-		jobs_mutex.Unlock()
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"djp.chapter42.de/a/data"
 	"djp.chapter42.de/a/logger"
+	"djp.chapter42.de/a/processor"
 	"go.uber.org/zap"
 )
 
@@ -30,7 +31,7 @@ func SavePendingJobs(jobs_mutex *sync.Mutex, pending_jobs *[]data.PendingJob) {
 	}
 }
 
-func RestorePendingJobs(pending_jobs *[]data.PendingJob) {
+func RestorePendingJobs(jobs_mutex *sync.Mutex, pending_jobs *[]data.PendingJob) {
 	data, err := os.ReadFile(PersistenceFileName)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -46,4 +47,8 @@ func RestorePendingJobs(pending_jobs *[]data.PendingJob) {
 	}
 
 	logger.Log.Info("Ausstehende Jobs aus Datei wiederhergestellt:", zap.String("filename", PersistenceFileName), zap.Int("count", len(*pending_jobs)))
+
+	for _, job := range *pending_jobs {
+		go processor.ProcessJob(job, pending_jobs, jobs_mutex)
+	}
 }
