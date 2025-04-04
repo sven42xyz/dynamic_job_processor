@@ -20,16 +20,13 @@ const (
 )
 
 func ProcessJob(job data.PendingJob, pending_jobs *[]data.PendingJob, job_mutex *sync.Mutex) {
-	pollingInterval := InitialPollingInterval
-
 	for {
-		time.Sleep(pollingInterval)
+		time.Sleep(timebackoff.SinusBackoff(job.Attempts))
 
 		writable, err := external.WriteCheck(job.Job.UID)
 		if err != nil {
 			logger.Log.Error("Fehler beim Überprüfen des Schreibzugriffs:", zap.String("uid", job.Job.UID), zap.Error(err))
 			job.Attempts++
-			pollingInterval = timebackoff.Min(time.Duration(float64(pollingInterval) * FailedCheckMultiplier), MaxCheckInterval) // Dynamische Anpassung der Abfragerate bei Fehler
 			continue
 		}
 
@@ -38,7 +35,6 @@ func ProcessJob(job data.PendingJob, pending_jobs *[]data.PendingJob, job_mutex 
 			if err != nil {
 				logger.Log.Error("Fehler beim Schreiben der Daten:", zap.String("uid", job.Job.UID), zap.Error(err))
 				job.Attempts++
-				pollingInterval = timebackoff.Min(time.Duration(float64(pollingInterval) * FailedCheckMultiplier), MaxCheckInterval) // Dynamische Anpassung der Abfragerate bei Fehler
 			} else {
 				logger.Log.Info("Daten erfolgreich geschrieben:", zap.String("uid", job.Job.UID))
 
@@ -55,7 +51,6 @@ func ProcessJob(job data.PendingJob, pending_jobs *[]data.PendingJob, job_mutex 
 			}
 		} else {
 			job.Attempts++
-			pollingInterval = timebackoff.Min(time.Duration(float64(pollingInterval) * FailedCheckMultiplier), MaxCheckInterval) // Dynamische Anpassung der Abfragerate, wenn Objekt blockiert ist
 		}
 	}
 }

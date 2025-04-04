@@ -21,13 +21,19 @@ func NewJobHandler(jobs_mutex *sync.Mutex, pending_jobs *[]data.PendingJob) gin.
 			return
 		}
 
+		pending_job := data.PendingJob{Job: job, CreatedAt: time.Now()}
+
 		jobs_mutex.Lock()
-		*pending_jobs = append(*pending_jobs, data.PendingJob{Job: job, CreatedAt: time.Now()})
+		*pending_jobs = append(*pending_jobs, pending_job)
 		jobs_mutex.Unlock()
 
-		go processor.ProcessJob(data.PendingJob{Job: job, CreatedAt: time.Now()}, pending_jobs, jobs_mutex)
-
-		logger.Log.Info("Neuer Job empfangen:", zap.String("uid", job.UID))
-		c.JSON(http.StatusAccepted, gin.H{"message": "Job akzeptiert", "uid": job.UID})
+		select {
+		case processor.JobQueue <- pending_job:
+			logger.Log.Info("Neuer Job empfangen:", zap.String("uid", job.UID))
+			c.JSON(http.StatusAccepted, gin.H{"message": "Job akzeptiert", "uid": job.UID})
+		default:
+			logger.Log.Error("Keine freien worker vorhanden für:", zap.String("uid", job.UID))
+			c.JSON(http.StatusServiceUnavailable, gin.H{"message": "Versuche es später nochmal", "uid": job.UID})
+		}
 	}
 }
