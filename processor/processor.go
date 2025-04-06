@@ -20,8 +20,10 @@ const (
 )
 
 func ProcessJob(job data.PendingJob, pending_jobs *[]data.PendingJob, job_mutex *sync.Mutex) {
+	backoff := timebackoff.NewSinusBackoff()
+
 	for {
-		time.Sleep(timebackoff.SinusBackoff(job.Attempts))
+		time.Sleep(backoff.CalculateBackoff(job.Attempts))
 
 		writable, err := external.WriteCheck(job.Job.UID)
 		if err != nil {
