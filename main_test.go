@@ -100,7 +100,7 @@ func TestCheckWritable(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer tsOK.Close()
-	config.Config = &config.WavelyConfig{}
+	config.Config = &data.WavelyConfig{}
 	config.Config.TargetSystemURL = tsOK.URL
 
 	writable, err := external.WriteCheck("test-uid")
@@ -143,7 +143,7 @@ func TestWriteData(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer tsSuccess.Close()
-	config.Config = &config.WavelyConfig{}
+	config.Config = &data.WavelyConfig{}
 	config.Config.TargetSystemURL = tsSuccess.URL
 
 	err := external.WriteData("test-uid", map[string]interface{}{"key": "value"})
