@@ -1,4 +1,4 @@
-# 🌊 Wavely – Polling, smarter than ever.
+# 🌊 Wavely – Polling the wavy way
 
 **Smooth. Resilient. And incredibly smart.**  
 Wavely is a Go-based, lightweight job runner for anyone who wants to query external systems respectfully.  
