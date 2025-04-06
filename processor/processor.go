@@ -11,14 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	MaxCheckInterval        time.Duration = 60 * time.Second
-	MinCheckInterval        time.Duration = 1 * time.Second
-	InitialPollingInterval  time.Duration = 2 * time.Second
-	SuccessfulWriteInterval time.Duration = 10 * time.Second
-	FailedCheckMultiplier   float64       = 1.5
-)
-
 func ProcessJob(job data.PendingJob, pending_jobs *[]data.PendingJob, job_mutex *sync.Mutex) {
 	backoff := timebackoff.NewSinusBackoff()
 
