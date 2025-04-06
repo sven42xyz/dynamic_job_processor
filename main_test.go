@@ -18,7 +18,6 @@ import (
 	"djp.chapter42.de/a/logger"
 	"djp.chapter42.de/a/persistence"
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
@@ -101,8 +100,8 @@ func TestCheckWritable(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer tsOK.Close()
-	config.Config = viper.New()
-	config.Config.Set("target_system_url", tsOK.URL)
+	config.Config = &config.WavelyConfig{}
+	config.Config.TargetSystemURL = tsOK.URL
 
 	writable, err := external.WriteCheck("test-uid")
 	assert.NoError(t, err)
@@ -113,7 +112,7 @@ func TestCheckWritable(t *testing.T) {
 		w.WriteHeader(http.StatusLocked)
 	}))
 	defer tsNotOK.Close()
-	config.Config.Set("target_system_url", tsNotOK.URL)
+	config.Config.TargetSystemURL = tsNotOK.URL
 
 	writable, err = external.WriteCheck("test-uid")
 	assert.NoError(t, err)
@@ -124,14 +123,14 @@ func TestCheckWritable(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer tsNotFound.Close()
-	config.Config.Set("target_system_url", tsNotFound.URL)
+	config.Config.TargetSystemURL = tsNotFound.URL
 
 	writable, err = external.WriteCheck("test-uid")
 	assert.NoError(t, err)
 	assert.False(t, writable)
 
 	// Testfall: Fehler beim Aufruf der API
-	config.Config.Set("target_system_url", "invalid-url")
+	config.Config.TargetSystemURL = "invalid-url"
 	writable, err = external.WriteCheck("test-uid")
 	assert.Error(t, err)
 	assert.False(t, writable)
@@ -144,8 +143,8 @@ func TestWriteData(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer tsSuccess.Close()
-	config.Config = viper.New()
-	config.Config.Set("target_system_url", tsSuccess.URL)
+	config.Config = &config.WavelyConfig{}
+	config.Config.TargetSystemURL = tsSuccess.URL
 
 	err := external.WriteData("test-uid", map[string]interface{}{"key": "value"})
 	assert.NoError(t, err)
@@ -156,7 +155,7 @@ func TestWriteData(t *testing.T) {
 		w.Write([]byte("Write error"))
 	}))
 	defer tsError.Close()
-	config.Config.Set("target_system_url", tsError.URL)
+	config.Config.TargetSystemURL = tsError.URL
 
 	err = external.WriteData("test-uid", map[string]interface{}{"key": "value"})
 	assert.Error(t, err)
@@ -164,7 +163,7 @@ func TestWriteData(t *testing.T) {
 	assert.Contains(t, err.Error(), "Body: Write error")
 
 	// Testfall: Fehler beim Serialisieren der Daten
-	config.Config.Set("target_system_url", tsSuccess.URL) // Verwenden Sie eine gültige URL, um den HTTP-Aufruf zu ermöglichen
+	config.Config.TargetSystemURL = tsSuccess.URL // Verwenden Sie eine gültige URL, um den HTTP-Aufruf zu ermöglichen
 	invalidData := map[string]interface{}{
 		"a": func() {}, // Funktion kann nicht in JSON serialisiert werden
 	}
@@ -173,7 +172,7 @@ func TestWriteData(t *testing.T) {
 	assert.Contains(t, err.Error(), "fehler beim Serialisieren der Daten zu JSON")
 
 	// Testfall: Fehler beim Erstellen der Anfrage
-	config.Config.Set("target_system_url", "%invalid-url") // Ungültige URL
+	config.Config.TargetSystemURL = "%invalid-url" // Ungültige URL
 	err = external.WriteData("test-uid", map[string]interface{}{"key": "value"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "fehler beim Erstellen der PUT-Anfrage")

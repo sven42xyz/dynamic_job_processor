@@ -11,7 +11,7 @@ import (
 )
 
 func WriteCheck(uid string) (bool, error) {
-	targetSystemURL := config.Config.GetString("target_system_url")
+	targetSystemURL := config.Config.TargetSystemURL
 	if targetSystemURL == "" {
 		logger.Log.Fatal("target_system_url ist nicht in der Konfiguration definiert")
 		return false, nil

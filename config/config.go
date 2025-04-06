@@ -1,33 +1,33 @@
 package config
 
 import (
-	"time"
-
+	"djp.chapter42.de/a/data"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
 const (
-	DefaultPort          string        = "8080"
-	DefaultCheckInterval time.Duration = 5 * time.Second
+	DefaultPort string = "8080"
 )
 
-var Config *viper.Viper
+var Config *data.WavelyConfig
 
 func InitConfig(logger *zap.Logger) {
-	Config = viper.New()
-	Config.SetDefault("port", DefaultPort)
-	Config.SetDefault("check_interval", DefaultCheckInterval)
-	Config.SetDefault("target_system_url", "")
-	Config.SetConfigName("config")
-	Config.SetConfigType("yaml")
-	Config.AddConfigPath(".")
-	err := Config.ReadInConfig()
+	v := viper.New()
+	v.SetDefault("port", DefaultPort)
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath(".")
+	err := v.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			logger.Warn("Konfigurationsdatei nicht gefunden, verwende Standardwerte")
 		} else {
 			logger.Error("Fehler beim Lesen der Konfigurationsdatei:", zap.Error(err))
 		}
+	}
+
+	if err := v.Unmarshal(&Config); err != nil {
+		logger.Error("Fehler beim Lesen der Konfigurationsdatei:", zap.Error(err))
 	}
 }

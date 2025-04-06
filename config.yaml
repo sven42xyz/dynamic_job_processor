@@ -1,3 +1,32 @@
-port: 8080
-target_system_url: "http://your-target-system.com/api" # Ersetzen Sie dies durch die tatsächliche URL Ihres Zielsystems
-debug: true # Setzen Sie dies auf false für Produktionsumgebungen
+# ~~~ WAVELY CONFIG ~~~
+# Commented entries are the defaults
+# To change them, uncomment and change the value
+
+# Service port
+# port: 8080
+
+target_system_url: "http://your-target-system.com/api" 
+
+# Debug mode
+# Offers atomic error logging
+debug: true 
+
+# Add your job to the list of currents
+currents:
+  - name: "example-service"
+    base_url: "https://api.example.com"
+    endpoints:
+      check_writable: "/resource/{{.UID}}/writable"
+      write: "/resource/{{.UID}}/data"
+    payload_template: |
+      {
+        "id": "{{.UID}}",
+        "data": {{.Data}}
+      }
+    auth:
+      type: "basic"
+      username: "admin"
+      password: "secret"
+    repetitions: 1
+    min_workers: 5
+    max_workers: 10

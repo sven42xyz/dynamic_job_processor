@@ -30,7 +30,7 @@ func main() {
 	config.InitConfig(logger.Log)
 
 	// Setzt den Debug Mode
-	debug_mode := config.Config.GetBool("debug")
+	debug_mode := config.Config.Debug
 
 	// Logger initialisieren
 	logger.InitLogger(debug_mode)
@@ -47,10 +47,7 @@ func main() {
 	router.POST("/jobs", handlers.NewJobHandler(&jobs_mutex, &pending_jobs))
 
 	// Server starten
-	port := config.Config.GetString("port")
-	if port == "" {
-		port = config.DefaultPort
-	}
+	port := config.Config.Port
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", port),
 		Handler: router,
