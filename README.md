@@ -15,7 +15,7 @@ Forget stubborn polling and aggressive retry - ride the wave with us instead.
 - Your microservice needs **load distribution**, not noise.
 
 Wavely takes care of it.  
-With **smart backoff and persistent control**.  
+With **sinusoidal backoff and persistent control**.  
 No broker. No third-party dependencies. 100% Go.
 
 ---
@@ -24,7 +24,7 @@ No broker. No third-party dependencies. 100% Go.
 
 | Feature                         | Description |
 |--------------------------------|--------------|
-| 🧠 **Sinusoidal Backoff**           | Instead of exponential delay, Wavely uses a smart sine curve per worker. |
+| 🧠 **Sinusoidal Backoff**           | Instead of exponential delay, Wavely uses a sine curve per worker. |
 | 🎛 **Phase Shift**             | Each job runs in its own phase. No spikes, no herds. |
 | 🎲 **Built-in Jitter**        | Small random deviations prevent request collisions. |
 | 🔁 **Persistence on Shutdown** | Jobs are automatically saved and resumed on restart.  |
