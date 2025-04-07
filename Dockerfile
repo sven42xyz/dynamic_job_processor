@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 # Bauen Sie die Go-Anwendung
-RUN go build -o microservice
+RUN go build -o wavely
 
 # Erstellen Sie ein schlankes Laufzeit-Image
 FROM alpine:latest
@@ -26,16 +26,16 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /app
 
 # Kopieren Sie die erstellte ausführbare Datei aus dem Builder-Image
-COPY --from=builder /app/microservice .
+COPY --from=builder /app/wavely .
 
 # Kopieren Sie die optionale Konfigurationsdatei
 COPY config.yaml .
 
 # Machen Sie die ausführbare Datei ausführbar
-RUN chmod +x microservice
+RUN chmod +x wavely
 
 # Definieren Sie den Befehl zum Starten des Microservice
-CMD ["./microservice"]
+CMD ["./wavely"]
 
 # Stellen Sie den Port bereit, auf dem die Anwendung läuft
 EXPOSE 8080
