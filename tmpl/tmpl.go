@@ -11,7 +11,7 @@ import (
 func PrepareTemplates(cfg *data.WavelyConfig) error {
 	current := &cfg.Current // Pointer nötig, um Änderungen zu speichern
 
-	checkTpl, err := template.New("check").Parse(current.Endpoints.CheckWritable)
+	checkTpl, err := template.New("check").Parse(current.Endpoints.Check)
 	if err != nil {
 		return fmt.Errorf("error in check endpoint template [%s]: %w", current.Name, err)
 	}

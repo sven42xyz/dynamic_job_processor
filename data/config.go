@@ -7,10 +7,9 @@ import (
 )
 
 type WavelyConfig struct {
-	Port            string        `mapstructure:"port"`
-	TargetSystemURL string        `mapstructure:"target_system_url"`
-	Debug           bool          `mapstructure:"debug"`
-	Current         CurrentConfig `mapstructure:"current"`
+	Port    string        `mapstructure:"port"`
+	Debug   bool          `mapstructure:"debug"`
+	Current CurrentConfig `mapstructure:"current"`
 }
 
 type CurrentConfig struct {
@@ -31,6 +30,6 @@ type CurrentConfig struct {
 }
 
 type EndpointConfig struct {
-	CheckWritable string `mapstructure:"check_writable"`
-	Write         string `mapstructure:"write"`
+	Check string `mapstructure:"check"`
+	Write string `mapstructure:"write"`
 }

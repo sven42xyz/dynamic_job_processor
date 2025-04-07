@@ -10,16 +10,20 @@ import (
 var Log *zap.Logger
 
 func InitLogger(debug bool) {
+	var logEncoding string
+
 	level := zap.NewAtomicLevel()
 	if debug {
 		level.SetLevel(zap.DebugLevel)
+		logEncoding = "console"
 	} else {
 		level.SetLevel(zap.InfoLevel)
+		logEncoding = "json"
 	}
 
 	cfg := zap.Config{
 		Level:            level,
-		Encoding:         "json",
+		Encoding:         logEncoding,
 		OutputPaths:      []string{"stdout"},
 		ErrorOutputPaths: []string{"stderr"},
 		EncoderConfig: zapcore.EncoderConfig{

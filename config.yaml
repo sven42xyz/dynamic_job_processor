@@ -5,8 +5,6 @@
 # Service port
 # port: 8080
 
-target_system_url: "http://your-target-system.com/api" 
-
 # Debug mode
 # Offers atomic error logging
 debug: true 
@@ -16,7 +14,7 @@ current:
   name: "example-service"
   base_url: "https://api.example.com"
   endpoints:
-    check_writable: "/resource/{{.UID}}/writable"
+    check: "/resource/{{.UID}}/writable"
     write: "/resource/{{.UID}}/data"
   auth:
     type: "basic"

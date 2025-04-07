@@ -101,7 +101,7 @@ func TestCheckWritable(t *testing.T) {
 	}))
 	defer tsOK.Close()
 	config.Config = &data.WavelyConfig{}
-	config.Config.TargetSystemURL = tsOK.URL
+	config.Config.Current.BaseURL = tsOK.URL
 
 	writable, err := external.WriteCheck(&data.Job{UID: "test-uid"}, &config.Config.Current)
 	assert.NoError(t, err)
@@ -112,7 +112,7 @@ func TestCheckWritable(t *testing.T) {
 		w.WriteHeader(http.StatusLocked)
 	}))
 	defer tsNotOK.Close()
-	config.Config.TargetSystemURL = tsNotOK.URL
+	config.Config.Current.BaseURL = tsNotOK.URL
 
 	writable, err = external.WriteCheck(&data.Job{UID: "test-uid"}, &config.Config.Current)
 	assert.NoError(t, err)
@@ -123,14 +123,14 @@ func TestCheckWritable(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer tsNotFound.Close()
-	config.Config.TargetSystemURL = tsNotFound.URL
+	config.Config.Current.BaseURL = tsNotFound.URL
 
 	writable, err = external.WriteCheck(&data.Job{UID: "test-uid"}, &config.Config.Current)
 	assert.NoError(t, err)
 	assert.False(t, writable)
 
 	// Testfall: Fehler beim Aufruf der API
-	config.Config.TargetSystemURL = "invalid-url"
+	config.Config.Current.BaseURL = "invalid-url"
 	writable, err = external.WriteCheck(&data.Job{UID: "test-uid"}, &config.Config.Current)
 	assert.Error(t, err)
 	assert.False(t, writable)
@@ -144,7 +144,7 @@ func TestWriteData(t *testing.T) {
 	}))
 	defer tsSuccess.Close()
 	config.Config = &data.WavelyConfig{}
-	config.Config.TargetSystemURL = tsSuccess.URL
+	config.Config.Current.BaseURL = tsSuccess.URL
 
 	err := external.WriteData(&data.Job{UID: "test-uid"}, map[string]interface{}{"key": "value"}, &config.Config.Current)
 	assert.NoError(t, err)
@@ -155,7 +155,7 @@ func TestWriteData(t *testing.T) {
 		w.Write([]byte("Write error"))
 	}))
 	defer tsError.Close()
-	config.Config.TargetSystemURL = tsError.URL
+	config.Config.Current.BaseURL = tsError.URL
 
 	err = external.WriteData(&data.Job{UID: "test-uid"}, map[string]interface{}{"key": "value"}, &config.Config.Current)
 	assert.Error(t, err)
@@ -163,7 +163,7 @@ func TestWriteData(t *testing.T) {
 	assert.Contains(t, err.Error(), "Body: Write error")
 
 	// Testfall: Fehler beim Serialisieren der Daten
-	config.Config.TargetSystemURL = tsSuccess.URL // Verwenden Sie eine gültige URL, um den HTTP-Aufruf zu ermöglichen
+	config.Config.Current.BaseURL = tsSuccess.URL // Verwenden Sie eine gültige URL, um den HTTP-Aufruf zu ermöglichen
 	invalidData := map[string]interface{}{
 		"a": func() {}, // Funktion kann nicht in JSON serialisiert werden
 	}
@@ -172,7 +172,7 @@ func TestWriteData(t *testing.T) {
 	assert.Contains(t, err.Error(), "fehler beim Serialisieren der Daten zu JSON")
 
 	// Testfall: Fehler beim Erstellen der Anfrage
-	config.Config.TargetSystemURL = "%invalid-url" // Ungültige URL
+	config.Config.Current.BaseURL = "%invalid-url" // Ungültige URL
 	err = external.WriteData(&data.Job{UID: "test-uid"}, map[string]interface{}{"key": "value"}, &config.Config.Current)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "fehler beim Erstellen der PUT-Anfrage")
