@@ -50,7 +50,7 @@ func setupRouter() *gin.Engine {
 
 func TestHandleNewJob(t *testing.T) {
 	router := setupRouter()
-	router.POST("/jobs", handlers.NewJobHandler(&jobs_mutex, &pending_jobs))
+	router.POST("/jobs", handlers.NewJobHandler(&jobsMutex, &pendingJobs))
 
 	jobData := `{"uid": "test", "data": {"key": "value"}}`
 	req, _ := http.NewRequest("POST", "/jobs", bytes.NewBufferString(jobData))
@@ -65,11 +65,11 @@ func TestHandleNewJob(t *testing.T) {
 	assert.Equal(t, "Job akzeptiert", response["message"])
 
 	// Überprüfen, ob der Job zu pendingJobs hinzugefügt wurde
-	jobs_mutex.Lock()
-	assert.Len(t, pending_jobs, 1)
-	assert.Equal(t, response["uid"], pending_jobs[0].Job.UID)
-	assert.Equal(t, map[string]interface{}{"key": "value"}, pending_jobs[0].Job.Data)
-	jobs_mutex.Unlock()
+	jobsMutex.Lock()
+	assert.Len(t, pendingJobs, 1)
+	assert.Equal(t, response["uid"], pendingJobs[0].Job.UID)
+	assert.Equal(t, map[string]interface{}{"key": "value"}, pendingJobs[0].Job.Data)
+	jobsMutex.Unlock()
 
 	// Test mit expliziter UID
 	jobDataWithUID := `{"uid": "test-uid", "data": {"key": "value"}}`
@@ -83,15 +83,15 @@ func TestHandleNewJob(t *testing.T) {
 	json.Unmarshal(respWithUID.Body.Bytes(), &responseWithUID)
 	assert.Equal(t, "test-uid", responseWithUID["uid"])
 
-	jobs_mutex.Lock()
-	assert.Len(t, pending_jobs, 2)
-	assert.Equal(t, "test-uid", pending_jobs[1].Job.UID)
-	jobs_mutex.Unlock()
+	jobsMutex.Lock()
+	assert.Len(t, pendingJobs, 2)
+	assert.Equal(t, "test-uid", pendingJobs[1].Job.UID)
+	jobsMutex.Unlock()
 
 	// Aufräumen
-	jobs_mutex.Lock()
-	pending_jobs = []data.PendingJob{}
-	jobs_mutex.Unlock()
+	jobsMutex.Lock()
+	pendingJobs = []data.PendingJob{}
+	jobsMutex.Unlock()
 }
 
 func TestCheckWritable(t *testing.T) {
@@ -189,36 +189,36 @@ func TestSaveAndRestorePendingJobs(t *testing.T) {
 	}
 
 	// Speichern der Jobs
-	pending_jobs = testJobs
-	persistence.SavePendingJobs(&jobs_mutex, &pending_jobs)
+	pendingJobs = testJobs
+	persistence.SavePendingJobs(&jobsMutex, &pendingJobs)
 
 	// Leeren der pendingJobs im Speicher
-	pending_jobs = []data.PendingJob{}
+	pendingJobs = []data.PendingJob{}
 
 	// Wiederherstellen der Jobs
-	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs, &config.Config.Current)
+	persistence.RestorePendingJobs(&jobsMutex, &pendingJobs, &config.Config.Current)
 
 	// Überprüfen, ob die wiederhergestellten Jobs mit den ursprünglichen übereinstimmen
-	assert.Len(t, pending_jobs, 2)
-	assert.Equal(t, "job1", pending_jobs[0].Job.UID)
-	assert.Equal(t, 1.0, pending_jobs[0].Job.Data["a"]) // JSON unmarshals Zahlen als float64
-	assert.Equal(t, "job2", pending_jobs[1].Job.UID)
-	assert.Equal(t, 2.0, pending_jobs[1].Job.Data["b"])
+	assert.Len(t, pendingJobs, 2)
+	assert.Equal(t, "job1", pendingJobs[0].Job.UID)
+	assert.Equal(t, 1.0, pendingJobs[0].Job.Data["a"]) // JSON unmarshals Zahlen als float64
+	assert.Equal(t, "job2", pendingJobs[1].Job.UID)
+	assert.Equal(t, 2.0, pendingJobs[1].Job.Data["b"])
 
 	// Aufräumen
 	os.Remove(persistence.PersistenceFileName)
 
 	// Testfall: Keine Datei vorhanden beim Wiederherstellen
-	pending_jobs = []data.PendingJob{}
-	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs, &config.Config.Current)
-	assert.Empty(t, pending_jobs)
+	pendingJobs = []data.PendingJob{}
+	persistence.RestorePendingJobs(&jobsMutex, &pendingJobs, &config.Config.Current)
+	assert.Empty(t, pendingJobs)
 }
 
 func TestProcessJobs(t *testing.T) {
 	// Aufräumen: Stellen Sie sicher, dass pendingJobs leer ist
-	jobs_mutex.Lock()
-	pending_jobs = []data.PendingJob{}
-	jobs_mutex.Unlock()
+	jobsMutex.Lock()
+	pendingJobs = []data.PendingJob{}
+	jobsMutex.Unlock()
 
 	// Mock-HTTP-Client erstellen
 	mockClient := new(MockHTTPClient)
@@ -232,16 +232,16 @@ func TestProcessJobs(t *testing.T) {
 		return strings.Contains(req.URL.Path, "/objects/test-uid") && req.Method == http.MethodPut
 	})).Return(&http.Response{StatusCode: http.StatusOK, Body: http.NoBody}, nil).Once()
 
-	jobs_mutex.Lock()
-	pending_jobs = append(pending_jobs, data.PendingJob{Job: data.Job{UID: "test-uid", Data: map[string]interface{}{"key": "value"}}, CreatedAt: time.Now()})
-	jobs_mutex.Unlock()
+	jobsMutex.Lock()
+	pendingJobs = append(pendingJobs, data.PendingJob{Job: data.Job{UID: "test-uid", Data: map[string]interface{}{"key": "value"}}, CreatedAt: time.Now()})
+	jobsMutex.Unlock()
 
 	// Kurze Zeit warten, um die Verarbeitung zu ermöglichen
 	time.Sleep(100 * time.Millisecond)
 
-	jobs_mutex.Lock()
-	assert.Empty(t, pending_jobs) // Job sollte verarbeitet und entfernt worden sein
-	jobs_mutex.Unlock()
+	jobsMutex.Lock()
+	assert.Empty(t, pendingJobs) // Job sollte verarbeitet und entfernt worden sein
+	jobsMutex.Unlock()
 	mockClient.AssertExpectations(t)
 
 	// Testfall: Fehler beim Überprüfen des Schreibzugriffs
@@ -249,16 +249,16 @@ func TestProcessJobs(t *testing.T) {
 		return strings.Contains(req.URL.Path, "/objects/another-uid/writable") && req.Method == http.MethodGet
 	})).Return(&http.Response{StatusCode: http.StatusInternalServerError, Body: http.NoBody}, fmt.Errorf("API error")).Once()
 
-	jobs_mutex.Lock()
-	pending_jobs = append(pending_jobs, data.PendingJob{Job: data.Job{UID: "another-uid", Data: map[string]interface{}{"key": "value"}}, CreatedAt: time.Now()})
-	jobs_mutex.Unlock()
+	jobsMutex.Lock()
+	pendingJobs = append(pendingJobs, data.PendingJob{Job: data.Job{UID: "another-uid", Data: map[string]interface{}{"key": "value"}}, CreatedAt: time.Now()})
+	jobsMutex.Unlock()
 
 	time.Sleep(100 * time.Millisecond)
 
-	jobs_mutex.Lock()
-	assert.Len(t, pending_jobs, 1) // Job sollte nicht entfernt worden sein
-	assert.Equal(t, "another-uid", pending_jobs[0].Job.UID)
-	jobs_mutex.Unlock()
+	jobsMutex.Lock()
+	assert.Len(t, pendingJobs, 1) // Job sollte nicht entfernt worden sein
+	assert.Equal(t, "another-uid", pendingJobs[0].Job.UID)
+	jobsMutex.Unlock()
 	mockClient.AssertExpectations(t)
 }
 

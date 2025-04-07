@@ -21,8 +21,8 @@ import (
 )
 
 var (
-	pending_jobs    []data.PendingJob
-	jobs_mutex      sync.Mutex
+	pendingJobs []data.PendingJob
+	jobsMutex   sync.Mutex
 )
 
 func main() {
@@ -30,21 +30,21 @@ func main() {
 	config.InitConfig(logger.Log)
 
 	// Setzt den Debug Mode
-	debug_mode := config.Config.Debug
+	debugMode := config.Config.Debug
 
 	// Logger initialisieren
-	logger.InitLogger(debug_mode)
+	logger.InitLogger(debugMode)
 	defer logger.Log.Sync()
 
 	// Geladene Jobs wiederherstellen
-	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs, &config.Config.Current)
+	persistence.RestorePendingJobs(&jobsMutex, &pendingJobs, &config.Config.Current)
 
 	// Start des Workerpools zum parallelen Verarbeiten der Jobs
-	processor.StartWorkerPool(&pending_jobs, &jobs_mutex, config.Config)
+	processor.StartWorkerPool(&pendingJobs, &jobsMutex, config.Config)
 
 	// Gin-Router initialisieren
 	router := gin.Default()
-	router.POST("/jobs", handlers.NewJobHandler(&jobs_mutex, &pending_jobs))
+	router.POST("/jobs", handlers.NewJobHandler(&jobsMutex, &pendingJobs))
 
 	// Server starten
 	port := config.Config.Port
@@ -61,7 +61,7 @@ func main() {
 		logger.Log.Info("Server wird heruntergefahren...")
 
 		// Offene Jobs sichern
-		persistence.SavePendingJobs(&jobs_mutex, &pending_jobs)
+		persistence.SavePendingJobs(&jobsMutex, &pendingJobs)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
