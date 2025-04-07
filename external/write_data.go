@@ -10,7 +10,7 @@ import (
 	"djp.chapter42.de/a/config"
 )
 
-func WriteData(uid string, data map[string]interface{}) error {
+func WriteData2(uid string, data map[string]interface{}) error {
 	targetSystemURL := config.Config.TargetSystemURL
 	if targetSystemURL == "" {
 		return fmt.Errorf("target_system_url ist nicht in der Konfiguration definiert")

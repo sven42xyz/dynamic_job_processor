@@ -1,7 +1,11 @@
 package config
 
 import (
+	"log"
+
+	"djp.chapter42.de/a/auth"
 	"djp.chapter42.de/a/data"
+	"djp.chapter42.de/a/tmpl"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
@@ -30,4 +34,14 @@ func InitConfig(logger *zap.Logger) {
 	if err := v.Unmarshal(&Config); err != nil {
 		logger.Error("Fehler beim Lesen der Konfigurationsdatei:", zap.Error(err))
 	}
+
+	if err := tmpl.PrepareTemplates(Config); err != nil {
+		logger.Error("Fehler beim Parsen der Templates:", zap.Error(err))
+	}
+
+	auth, err := auth.BuildAuthProvider(Config.Current.Auth)
+	if err != nil {
+		log.Fatalf("Fehler beim Erzeugen des AuthProviders für %s: %v", Config.Current.Name, err)
+	}
+	Config.Current.AuthProvider = auth
 }

@@ -11,13 +11,13 @@ import (
 	"go.uber.org/zap"
 )
 
-func ProcessJob(job data.PendingJob, pending_jobs *[]data.PendingJob, job_mutex *sync.Mutex) {
+func ProcessJob(job data.PendingJob, pendingJobs *[]data.PendingJob, jobMutex *sync.Mutex, currentCfg *data.CurrentConfig) {
 	backoff := timebackoff.NewSinusBackoff()
 
 	for {
 		time.Sleep(backoff.CalculateBackoff(job.Attempts))
 
-		writable, err := external.WriteCheck(job.Job.UID)
+		writable, err := external.WriteCheck(&job.Job, currentCfg)
 		if err != nil {
 			logger.Log.Error("Fehler beim Überprüfen des Schreibzugriffs:", zap.String("uid", job.Job.UID), zap.Error(err))
 			job.Attempts++
@@ -25,21 +25,21 @@ func ProcessJob(job data.PendingJob, pending_jobs *[]data.PendingJob, job_mutex 
 		}
 
 		if writable {
-			err := external.WriteData(job.Job.UID, job.Job.Data)
+			err := external.WriteData(&job.Job, job.Job.Data, currentCfg)
 			if err != nil {
 				logger.Log.Error("Fehler beim Schreiben der Daten:", zap.String("uid", job.Job.UID), zap.Error(err))
 				job.Attempts++
 			} else {
 				logger.Log.Info("Daten erfolgreich geschrieben:", zap.String("uid", job.Job.UID))
 
-				job_mutex.Lock()
-                for i, j := range *pending_jobs {
-                    if j.Job.UID == job.Job.UID {
-                        *pending_jobs = append((*pending_jobs)[:i], (*pending_jobs)[i+1:]...) // Job entfernen
-                        break
-                    }
-                }
-                job_mutex.Unlock()
+				jobMutex.Lock()
+				for i, j := range *pendingJobs {
+					if j.Job.UID == job.Job.UID {
+						*pendingJobs = append((*pendingJobs)[:i], (*pendingJobs)[i+1:]...) // Job entfernen
+						break
+					}
+				}
+				jobMutex.Unlock()
 
 				return
 			}

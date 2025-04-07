@@ -31,7 +31,7 @@ func SavePendingJobs(jobs_mutex *sync.Mutex, pending_jobs *[]data.PendingJob) {
 	}
 }
 
-func RestorePendingJobs(jobs_mutex *sync.Mutex, pending_jobs *[]data.PendingJob) {
+func RestorePendingJobs(jobs_mutex *sync.Mutex, pending_jobs *[]data.PendingJob, currentCfg *data.CurrentConfig) {
 	data, err := os.ReadFile(PersistenceFileName)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -49,6 +49,6 @@ func RestorePendingJobs(jobs_mutex *sync.Mutex, pending_jobs *[]data.PendingJob)
 	logger.Log.Info("Ausstehende Jobs aus Datei wiederhergestellt:", zap.String("filename", PersistenceFileName), zap.Int("count", len(*pending_jobs)))
 
 	for _, job := range *pending_jobs {
-		go processor.ProcessJob(job, pending_jobs, jobs_mutex)
+		go processor.ProcessJob(job, pending_jobs, jobs_mutex, currentCfg)
 	}
 }

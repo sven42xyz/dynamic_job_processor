@@ -11,9 +11,18 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"djp.chapter42.de/a/data"
 )
+
+type AuthConfig struct {
+	Type         string `mapstructure:"type"` // basic, bearer, oauth2
+	Username     string `mapstructure:"username,omitempty"`
+	Password     string `mapstructure:"password,omitempty"`
+	Token        string `mapstructure:"token,omitempty"`
+	ClientID     string `mapstructure:"client_id,omitempty"`
+	ClientSecret string `mapstructure:"client_secret,omitempty"`
+	TokenURL     string `mapstructure:"token_url,omitempty"`
+	RefreshToken string `mapstructure:"refresh_token,omitempty"`
+}
 
 type AuthProvider interface {
 	GetAuthHeader() (string, error)
@@ -90,7 +99,7 @@ func (o *OAuth2Auth) refreshAccessToken() (string, error) {
 	return "Bearer " + o.accessToken, nil
 }
 
-func BuildAuthProvider(cfg data.AuthConfig) (AuthProvider, error) {
+func BuildAuthProvider(cfg AuthConfig) (AuthProvider, error) {
 	switch strings.ToLower(cfg.Type) {
 	case "basic":
 		return &BasicAuth{

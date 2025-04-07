@@ -103,7 +103,7 @@ func TestCheckWritable(t *testing.T) {
 	config.Config = &data.WavelyConfig{}
 	config.Config.TargetSystemURL = tsOK.URL
 
-	writable, err := external.WriteCheck("test-uid")
+	writable, err := external.WriteCheck(&data.Job{UID: "test-uid"}, &config.Config.Current)
 	assert.NoError(t, err)
 	assert.True(t, writable)
 
@@ -114,7 +114,7 @@ func TestCheckWritable(t *testing.T) {
 	defer tsNotOK.Close()
 	config.Config.TargetSystemURL = tsNotOK.URL
 
-	writable, err = external.WriteCheck("test-uid")
+	writable, err = external.WriteCheck(&data.Job{UID: "test-uid"}, &config.Config.Current)
 	assert.NoError(t, err)
 	assert.False(t, writable)
 
@@ -125,13 +125,13 @@ func TestCheckWritable(t *testing.T) {
 	defer tsNotFound.Close()
 	config.Config.TargetSystemURL = tsNotFound.URL
 
-	writable, err = external.WriteCheck("test-uid")
+	writable, err = external.WriteCheck(&data.Job{UID: "test-uid"}, &config.Config.Current)
 	assert.NoError(t, err)
 	assert.False(t, writable)
 
 	// Testfall: Fehler beim Aufruf der API
 	config.Config.TargetSystemURL = "invalid-url"
-	writable, err = external.WriteCheck("test-uid")
+	writable, err = external.WriteCheck(&data.Job{UID: "test-uid"}, &config.Config.Current)
 	assert.Error(t, err)
 	assert.False(t, writable)
 }
@@ -146,7 +146,7 @@ func TestWriteData(t *testing.T) {
 	config.Config = &data.WavelyConfig{}
 	config.Config.TargetSystemURL = tsSuccess.URL
 
-	err := external.WriteData("test-uid", map[string]interface{}{"key": "value"})
+	err := external.WriteData(&data.Job{UID: "test-uid"}, map[string]interface{}{"key": "value"}, &config.Config.Current)
 	assert.NoError(t, err)
 
 	// Testfall: Fehler beim Schreiben (Status nicht 2xx)
@@ -157,7 +157,7 @@ func TestWriteData(t *testing.T) {
 	defer tsError.Close()
 	config.Config.TargetSystemURL = tsError.URL
 
-	err = external.WriteData("test-uid", map[string]interface{}{"key": "value"})
+	err = external.WriteData(&data.Job{UID: "test-uid"}, map[string]interface{}{"key": "value"}, &config.Config.Current)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Status: 500 Internal Server Error")
 	assert.Contains(t, err.Error(), "Body: Write error")
@@ -167,13 +167,13 @@ func TestWriteData(t *testing.T) {
 	invalidData := map[string]interface{}{
 		"a": func() {}, // Funktion kann nicht in JSON serialisiert werden
 	}
-	err = external.WriteData("test-uid", invalidData)
+	err = external.WriteData(&data.Job{UID: "test-uid"}, invalidData, &config.Config.Current)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "fehler beim Serialisieren der Daten zu JSON")
 
 	// Testfall: Fehler beim Erstellen der Anfrage
 	config.Config.TargetSystemURL = "%invalid-url" // Ungültige URL
-	err = external.WriteData("test-uid", map[string]interface{}{"key": "value"})
+	err = external.WriteData(&data.Job{UID: "test-uid"}, map[string]interface{}{"key": "value"}, &config.Config.Current)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "fehler beim Erstellen der PUT-Anfrage")
 }
@@ -196,7 +196,7 @@ func TestSaveAndRestorePendingJobs(t *testing.T) {
 	pending_jobs = []data.PendingJob{}
 
 	// Wiederherstellen der Jobs
-	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs)
+	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs, &config.Config.Current)
 
 	// Überprüfen, ob die wiederhergestellten Jobs mit den ursprünglichen übereinstimmen
 	assert.Len(t, pending_jobs, 2)
@@ -210,7 +210,7 @@ func TestSaveAndRestorePendingJobs(t *testing.T) {
 
 	// Testfall: Keine Datei vorhanden beim Wiederherstellen
 	pending_jobs = []data.PendingJob{}
-	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs)
+	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs, &config.Config.Current)
 	assert.Empty(t, pending_jobs)
 }
 

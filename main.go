@@ -37,10 +37,10 @@ func main() {
 	defer logger.Log.Sync()
 
 	// Geladene Jobs wiederherstellen
-	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs)
+	persistence.RestorePendingJobs(&jobs_mutex, &pending_jobs, &config.Config.Current)
 
 	// Start des Workerpools zum parallelen Verarbeiten der Jobs
-	processor.StartWorkerPool(&pending_jobs, &jobs_mutex)
+	processor.StartWorkerPool(&pending_jobs, &jobs_mutex, config.Config)
 
 	// Gin-Router initialisieren
 	router := gin.Default()

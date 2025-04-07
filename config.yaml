@@ -12,21 +12,16 @@ target_system_url: "http://your-target-system.com/api"
 debug: true 
 
 # Add your job to the list of currents
-currents:
-  - name: "example-service"
-    base_url: "https://api.example.com"
-    endpoints:
-      check_writable: "/resource/{{.UID}}/writable"
-      write: "/resource/{{.UID}}/data"
-    payload_template: |
-      {
-        "id": "{{.UID}}",
-        "data": {{.Data}}
-      }
-    auth:
-      type: "basic"
-      username: "admin"
-      password: "secret"
-    repetitions: 1
-    min_workers: 5
-    max_workers: 10
+current:
+  name: "example-service"
+  base_url: "https://api.example.com"
+  endpoints:
+    check_writable: "/resource/{{.UID}}/writable"
+    write: "/resource/{{.UID}}/data"
+  auth:
+    type: "basic"
+    username: "admin"
+    password: "secret"
+  repetitions: 1
+  min_workers: 5
+  max_workers: 10
