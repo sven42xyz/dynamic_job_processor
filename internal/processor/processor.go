@@ -4,10 +4,10 @@ import (
 	"sync"
 	"time"
 
-	"djp.chapter42.de/a/data"
-	"djp.chapter42.de/a/external"
-	"djp.chapter42.de/a/logger"
-	timebackoff "djp.chapter42.de/a/time_backoff"
+	"djp.chapter42.de/a/internal/data"
+	"djp.chapter42.de/a/internal/external"
+	"djp.chapter42.de/a/internal/logger"
+	timebackoff "djp.chapter42.de/a/internal/time_backoff"
 	"go.uber.org/zap"
 )
 

@@ -3,15 +3,15 @@ package config
 import (
 	"log"
 
-	"djp.chapter42.de/a/auth"
-	"djp.chapter42.de/a/data"
-	"djp.chapter42.de/a/tmpl"
+	"djp.chapter42.de/a/internal/auth"
+	"djp.chapter42.de/a/internal/data"
+	"djp.chapter42.de/a/internal/tmpl"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
 const (
-	DefaultPort string = "8080"
+	DefaultPort string = "4224"
 )
 
 var Config *data.WavelyConfig
@@ -19,7 +19,7 @@ var Config *data.WavelyConfig
 func InitConfig(logger *zap.Logger) {
 	v := viper.New()
 	v.SetDefault("port", DefaultPort)
-	v.SetConfigName("config")
+	v.SetConfigName("wavely.cfg")
 	v.SetConfigType("yaml")
 	v.AddConfigPath(".")
 	err := v.ReadInConfig()

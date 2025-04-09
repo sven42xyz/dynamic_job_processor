@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"html/template"
 
-	"djp.chapter42.de/a/data"
+	"djp.chapter42.de/a/internal/data"
 )
 
 func PrepareTemplates(cfg *data.WavelyConfig) error {

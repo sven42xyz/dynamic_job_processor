@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  wavely:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wavely
+    restart: unless-stopped
+    ports:
+      - "4224:4224"
+    volumes:
+      - ./config:/app/config         # Konfigurationsdateien
+      - ./cache:/app/cache           # Persistente Login-Token oder Temp-Dateien
+      - ./logs:/app/logs             # Log-Ausgabe (siehe unten)
+    environment:
+      - LOG_FILE=/app/logs/wavely.log
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4224/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s

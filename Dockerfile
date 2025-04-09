@@ -1,41 +1,31 @@
-# Verwenden Sie ein offizielles Go-Image als Basis
+# Build-Stage mit Go 1.24
 FROM golang:1.24-alpine AS builder
 
-# Setzen Sie das Arbeitsverzeichnis im Container
 WORKDIR /app
 
-# Kopieren Sie die go.mod und go.sum Dateien, um Abhängigkeiten zu verwalten
+# Dependencies laden
 COPY go.mod go.sum ./
-
-# Laden Sie die Abhängigkeiten herunter
 RUN go mod download
 
-# Kopieren Sie den Quellcode
+# Quellcode kopieren
 COPY . .
 
-# Bauen Sie die Go-Anwendung
-RUN go build -o wavely
+# Statisches Binary bauen
+RUN CGO_ENABLED=0 go build -o wavely ./cmd/main.go
 
-# Erstellen Sie ein schlankes Laufzeit-Image
+# Finales Image
 FROM alpine:latest
 
-# Installieren Sie ca-certificates für HTTPS-Unterstützung
-RUN apk --no-cache add ca-certificates
-
-# Setzen Sie das Arbeitsverzeichnis
 WORKDIR /app
 
-# Kopieren Sie die erstellte ausführbare Datei aus dem Builder-Image
-COPY --from=builder /app/wavely .
+# Binary aus Builder übernehmen
+COPY --from=builder /app/wavely /app/wavely
 
-# Kopieren Sie die optionale Konfigurationsdatei
-COPY config.yaml .
+# Konfigurationsordner & Logs
+COPY config /app/config
+VOLUME ["/app/cache"]
+VOLUME ["/app/logs"]
 
-# Machen Sie die ausführbare Datei ausführbar
-RUN chmod +x wavely
+EXPOSE 4224
 
-# Definieren Sie den Befehl zum Starten des Microservice
-CMD ["./wavely"]
-
-# Stellen Sie den Port bereit, auf dem die Anwendung läuft
-EXPOSE 8080
+ENTRYPOINT ["/app/wavely"]

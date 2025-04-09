@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"djp.chapter42.de/a/data"
-	"djp.chapter42.de/a/logger"
-	"djp.chapter42.de/a/processor"
+	"djp.chapter42.de/a/internal/data"
+	"djp.chapter42.de/a/internal/logger"
+	"djp.chapter42.de/a/internal/processor"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )

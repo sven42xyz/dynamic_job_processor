@@ -7,9 +7,10 @@ import (
 	"io"
 	"net/http"
 
-	"djp.chapter42.de/a/data"
-	"djp.chapter42.de/a/logger"
-	"djp.chapter42.de/a/tmpl"
+	"djp.chapter42.de/a/internal/convert"
+	"djp.chapter42.de/a/internal/data"
+	"djp.chapter42.de/a/internal/logger"
+	"djp.chapter42.de/a/internal/tmpl"
 	"go.uber.org/zap"
 )
 
@@ -61,13 +62,19 @@ func WriteData(job *data.Job, data map[string]interface{}, currentCfg *data.Curr
 		return err
 	}
 
-	jsonData, err:= json.Marshal(data)
+	var payload []byte
+	switch currentCfg.ContentType {
+	case "json":
+		payload, err = json.Marshal(data)
+	case "xml":
+		payload = convert.MapToXML(data)
+	}
 	if err != nil {
 		logger.Log.Error("Error while serializing the data:", zap.Error(err))
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPut, checkURL, bytes.NewReader(jsonData))
+	req, err := http.NewRequest(http.MethodPut, checkURL, bytes.NewReader(payload))
 	if err != nil {
 		logger.Log.Error("Error while generating request:", zap.Error(err))
 		return err

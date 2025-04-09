@@ -3,7 +3,7 @@
 # To change them, uncomment and change the value
 
 # Service port
-# port: 8080
+# port: 4224
 
 # Debug mode
 # Offers atomic error logging
@@ -16,6 +16,7 @@ current:
   endpoints:
     check: "/resource/{{.UID}}/writable"
     write: "/resource/{{.UID}}/data"
+  content_type: "json"
   auth:
     type: "basic"
     username: "admin"

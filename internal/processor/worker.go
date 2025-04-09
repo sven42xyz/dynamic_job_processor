@@ -3,7 +3,7 @@ package processor
 import (
 	"sync"
 
-	"djp.chapter42.de/a/data"
+	"djp.chapter42.de/a/internal/data"
 )
 
 // Todo:
