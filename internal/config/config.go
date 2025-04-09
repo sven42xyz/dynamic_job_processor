@@ -21,7 +21,7 @@ func InitConfig(logger *zap.Logger) {
 	v.SetDefault("port", DefaultPort)
 	v.SetConfigName("wavely.cfg")
 	v.SetConfigType("yaml")
-	v.AddConfigPath(".")
+	v.AddConfigPath("/app/config")
 	err := v.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {

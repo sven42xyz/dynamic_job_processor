@@ -44,6 +44,7 @@ func main() {
 
 	// Gin-Router initialisieren
 	router := gin.Default()
+	router.GET("/health", handlers.HealthHandler())
 	router.POST("/jobs", handlers.NewJobHandler(&jobsMutex, &pendingJobs))
 
 	// Server starten
