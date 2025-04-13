@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// const PersistenceFileName string = "./cache/pending_jobs.json"
 const PersistenceFileName string = "/app/cache/pending_jobs.json"
 
 func SavePendingJobs(jobs_mutex *sync.Mutex, pending_jobs *[]data.PendingJob) {

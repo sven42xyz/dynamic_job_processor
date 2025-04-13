@@ -7,7 +7,7 @@
 
 # Debug mode
 # Offers atomic error logging
-# debug: true 
+debug: true 
 
 # Add your job to the list of currents
 current:

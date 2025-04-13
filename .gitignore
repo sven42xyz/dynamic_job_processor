@@ -3,3 +3,6 @@
 
 #Config files to be excluded
 *.env
+
+#Logfiles to be excluded
+*.log

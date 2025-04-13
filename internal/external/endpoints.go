@@ -171,6 +171,8 @@ func urlBuilder(currentCfg *data.CurrentConfig, job *data.Job, ep string) (strin
 	switch ep {
 	case "check":
 		endpoint, err = tmpl.RenderEndpoint(currentCfg.ParsedCheckTpl, *job)
+	case "revision":
+		endpoint, err = tmpl.RenderEndpoint(currentCfg.ParsedRevisionTpl, *job)
 	case "write":
 		endpoint, err = tmpl.RenderEndpoint(currentCfg.ParsedWriteTpl, *job)
 	default:
