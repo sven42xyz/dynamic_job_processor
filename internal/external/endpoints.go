@@ -2,12 +2,12 @@ package external
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
-	"djp.chapter42.de/a/internal/convert"
 	"djp.chapter42.de/a/internal/data"
 	"djp.chapter42.de/a/internal/logger"
 	"djp.chapter42.de/a/internal/tmpl"
@@ -56,22 +56,24 @@ func WriteCheck(job *data.Job, currentCfg *data.CurrentConfig) (bool, error) {
 	}
 }
 
-func WriteData(job *data.Job, data map[string]interface{}, currentCfg *data.CurrentConfig) error {
+func WriteData(job *data.Job, data string, currentCfg *data.CurrentConfig) error {
 	checkURL, err := urlBuilder(currentCfg, job, "check")
 	if err != nil {
 		return err
 	}
 
-	var payload []byte
-	switch currentCfg.ContentType {
-	case "json":
-		payload, err = json.Marshal(data)
-	case "xml":
-		payload = convert.MapToXML(data)
-	}
+	payload, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		logger.Log.Error("Error while serializing the data:", zap.Error(err))
 		return err
+	}
+
+	var contentType string
+	switch job.ContentType {
+	case "json":
+		contentType = "application/json"
+	case "xml":
+		contentType = "application/xml"
 	}
 
 	req, err := http.NewRequest(http.MethodPut, checkURL, bytes.NewReader(payload))
@@ -79,7 +81,7 @@ func WriteData(job *data.Job, data map[string]interface{}, currentCfg *data.Curr
 		logger.Log.Error("Error while generating request:", zap.Error(err))
 		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("User-Agent", "Wavely/1.0")
 
 	if currentCfg.AuthProvider != nil {
@@ -105,6 +107,54 @@ func WriteData(job *data.Job, data map[string]interface{}, currentCfg *data.Curr
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		logger.Log.Error("Error while writing data:", zap.String("Status", resp.Status), zap.String("Body", string(bodyBytes)))
 		return fmt.Errorf("error while writing data %s, Body: %s", resp.Status, string(bodyBytes))
+	}
+}
+
+func LatestRevision(job *data.Job, currentCfg *data.CurrentConfig) (string, error) {
+	revisionURL, err := urlBuilder(currentCfg, job, "revision")
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, revisionURL, nil)
+	if err != nil {
+		logger.Log.Warn("Error while generating request:", zap.Error(err))
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "Wavely/1.0")
+
+	if currentCfg.AuthProvider != nil {
+		auth_header, err := currentCfg.AuthProvider.GetAuthHeader()
+		if err != nil {
+			logger.Log.Warn("Error while generating AuthHeaders:", zap.Error(err))
+			return "", err
+		}
+		req.Header.Set("Authorization", auth_header)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		var latestRevision data.Revision
+		json.Unmarshal(body, &latestRevision)
+		return latestRevision.LatestRevision, nil
+	} else if resp.StatusCode == http.StatusNotFound {
+		logger.Log.Warn("Zielobjekt nicht gefunden:", zap.String("uid", job.UID))
+		return "", nil // Objekt existiert nicht oder ist nicht auffindbar, nicht als Blockade interpretieren
+	} else {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		logger.Log.Debug("Schreibstatus-API Antwort:", zap.String("status", resp.Status), zap.String("body", string(bodyBytes)))
+		return "", nil // Andere Statuscodes deuten auf Blockade oder Fehler hin
 	}
 }
 

@@ -15,12 +15,17 @@ func PrepareTemplates(cfg *data.WavelyConfig) error {
 	if err != nil {
 		return fmt.Errorf("error in check endpoint template [%s]: %w", current.Name, err)
 	}
+	revsionTpl, err := template.New("revision").Parse(current.Endpoints.Revision)
+	if err != nil {
+		return fmt.Errorf("error in revision endpoint template [%s]: %w", current.Name, err)
+	}
 	writeTpl, err := template.New("write").Parse(current.Endpoints.Write)
 	if err != nil {
 		return fmt.Errorf("error in write endpoint template [%s]: %w", current.Name, err)
 	}
 
 	current.ParsedCheckTpl = checkTpl
+	current.ParsedRevisionTpl = revsionTpl
 	current.ParsedWriteTpl = writeTpl
 
 	return nil

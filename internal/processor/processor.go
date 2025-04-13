@@ -17,6 +17,14 @@ func ProcessJob(job data.PendingJob, pendingJobs *[]data.PendingJob, jobMutex *s
 	for {
 		time.Sleep(backoff.CalculateBackoff(job.Attempts))
 
+		latestRevision, err := external.LatestRevision(&job.Job, currentCfg)
+		if err != nil {
+			logger.Log.Error("Konnte die neueste Revision nicht abrufen:", zap.String("uid", job.Job.UID), zap.Error(err))
+			job.Attempts++
+			continue
+		}
+		job.Job.UID = latestRevision
+
 		writable, err := external.WriteCheck(&job.Job, currentCfg)
 		if err != nil {
 			logger.Log.Error("Fehler beim Überprüfen des Schreibzugriffs:", zap.String("uid", job.Job.UID), zap.Error(err))

@@ -17,6 +17,7 @@ import (
 	"djp.chapter42.de/a/internal/persistence"
 	"djp.chapter42.de/a/internal/processor"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-contrib/cors"
 	"go.uber.org/zap"
 )
 
@@ -44,6 +45,16 @@ func main() {
 
 	// Gin-Router initialisieren
 	router := gin.Default()
+
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
 	router.GET("/health", handlers.HealthHandler())
 	router.POST("/jobs", handlers.NewJobHandler(&jobsMutex, &pendingJobs))
 

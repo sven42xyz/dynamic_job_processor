@@ -17,6 +17,11 @@ func SavePendingJobs(jobs_mutex *sync.Mutex, pending_jobs *[]data.PendingJob) {
 	jobs_mutex.Lock()
 	defer jobs_mutex.Unlock()
 
+	if pending_jobs == nil || len(*pending_jobs) == 0 {
+		logger.Log.Info("Es stehen keine ausstehenden Jobs an.")
+		return
+	}
+
 	data, err := json.MarshalIndent(*pending_jobs, "", "  ")
 	if err != nil {
 		logger.Log.Error("Fehler beim Serialisieren der ausstehenden Jobs:", zap.Error(err))

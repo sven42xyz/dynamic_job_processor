@@ -23,14 +23,16 @@ type CurrentConfig struct {
 	MaxWorkers  int             `mapstructure:"min_workers"`
 
 	// Caching vorbereiteter Templates
-	ParsedCheckTpl *template.Template
-	ParsedWriteTpl *template.Template
+	ParsedCheckTpl    *template.Template
+	ParsedRevisionTpl *template.Template
+	ParsedWriteTpl    *template.Template
 
 	// Authentication provider
 	AuthProvider auth.AuthProvider
 }
 
 type EndpointConfig struct {
-	Check string `mapstructure:"check"`
-	Write string `mapstructure:"write"`
+	Check    string `mapstructure:"check"`
+	Revision string `mapstructure:"revision"`
+	Write    string `mapstructure:"write"`
 }

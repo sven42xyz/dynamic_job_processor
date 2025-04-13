@@ -7,7 +7,7 @@
 
 # Debug mode
 # Offers atomic error logging
-debug: true 
+# debug: true 
 
 # Add your job to the list of currents
 current:
@@ -15,6 +15,7 @@ current:
   base_url: "https://api.example.com"
   endpoints:
     check: "/resource/{{.UID}}/writable"
+    revision: "/resource/{{.UID}}/latest-revision"
     write: "/resource/{{.UID}}/data"
   content_type: "json"
   auth:

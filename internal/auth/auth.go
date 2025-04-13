@@ -117,6 +117,8 @@ func BuildAuthProvider(cfg AuthConfig) (AuthProvider, error) {
 			TokenURL:     cfg.TokenURL,
 			RefreshToken: cfg.RefreshToken,
 		}, nil
+	case "none":
+		return nil, nil
 	default:
 		return nil, errors.New("unbekannter Auth-Typ: " + cfg.Type)
 	}

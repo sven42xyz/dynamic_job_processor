@@ -2,20 +2,21 @@ version: "3.9"
 
 services:
   wavely:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: sven42xyz/wavely:latest # Current digest: sha256:c3f2372415e76d90897e8aa7e909da9a6840102074b7420db1f34930f71be75c
     container_name: wavely
     restart: unless-stopped
+
+    # Expose the wavely port
     ports:
       - "4224:4224"
+
+    # External directories
     volumes:
-      - ./config:/app/config         # Konfigurationsdateien
-      - ./cache:/app/cache           # Persistente Login-Token oder Temp-Dateien
-      - ./logs:/app/logs             # Log-Ausgabe (siehe unten)
-    environment:
-      - LOG_FILE=/app/logs/wavely.log
-      - LOG_LEVEL=info
+      - ./config:/app/config     # Place your wavely.cfg.yaml here
+      - ./cache:/app/cache       # This directory is used to persist app and auth data
+      - ./logs:/app/logs         # Logs will be outputted here
+
+    # Wavely provides a health check interface
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4224/health"]
       interval: 30s
