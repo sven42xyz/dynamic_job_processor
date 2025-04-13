@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   wavely:
-    image: sven42xyz/wavely:latest # Current digest: sha256:c3f2372415e76d90897e8aa7e909da9a6840102074b7420db1f34930f71be75c
+    image: sven42xyz/wavely:latest # Current digest: sha256:8820c3b51c636b225113860030e7652b27a32b3345f51c3681cef5a5ad1484ba
     container_name: wavely
     restart: unless-stopped
 
